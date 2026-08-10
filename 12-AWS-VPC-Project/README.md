@@ -1,308 +1,467 @@
 <div align="center">
 
-# 🧩 Terraform Modules — Complete Masterclass
+# 🌐 Terraform AWS VPC — Complete Real-World Project
 
-### ♻️ Build Once • Reuse Everywhere • Version Everything | VishwaTech Labs
+### 🏗️ Build a Production-Style AWS Network from Scratch | VishwaTech Labs
 
 [![Terraform](https://img.shields.io/badge/Terraform-844FBA?logo=terraform&logoColor=white)](https://developer.hashicorp.com/terraform/docs)
-[![Modules](https://img.shields.io/badge/Modules-Reusable%20Infrastructure-blue)](#-what-is-a-terraform-module)
-[![AWS](https://img.shields.io/badge/AWS-Cloud-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/)
-[![Registry](https://img.shields.io/badge/Registry-Modules-success)](#-terraform-registry-modules)
+[![AWS VPC](https://img.shields.io/badge/AWS-VPC-FF9900?logo=amazonaws&logoColor=white)](https://aws.amazon.com/vpc/)
+[![IaC](https://img.shields.io/badge/IaC-Terraform-blue)](#-project-goals)
+[![Networking](https://img.shields.io/badge/Networking-VPC-green)](#-architecture)
 [![Labs](https://img.shields.io/badge/Labs-30+-purple)](#-hands-on-labs)
 
-**Learn how to transform Terraform configurations into reusable, versioned, testable infrastructure building blocks.**
+**A complete hands-on Terraform + AWS networking project covering VPC, subnets, routing, Internet Gateway, NAT Gateway, NACLs, Security Groups, outputs, modules, state, validation and production practices.**
 
-[📘 Modules](https://developer.hashicorp.com/terraform/language/modules) •
-[📦 Module Sources](https://developer.hashicorp.com/terraform/language/modules/sources) •
-[🏛️ Registry](https://registry.terraform.io/)
+[📘 AWS VPC](https://docs.aws.amazon.com/vpc/) •
+[📘 Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs) •
+[📘 Terraform](https://developer.hashicorp.com/terraform/docs)
 
 </div>
 
 ---
 
-# 🎯 What You Will Learn
+# 🎯 Project Goal
+
+Build this architecture using Terraform:
 
 ```text
-What Is a Module?
-Root Module
-Child Module
-Module Structure
-main.tf
-variables.tf
-outputs.tf
-locals.tf
-README.md
-Module Inputs
-Module Outputs
-Module Composition
-Local Modules
-Git Modules
-Registry Modules
-Module Versioning
-Source Addresses
-Module Providers
-Provider Aliases
-count with Modules
-for_each with Modules
-Nested Modules
-Module Dependencies
-Module Refactoring
-Module State Addresses
-Moved Blocks
-Module Security
-Module Design Patterns
-AWS VPC Module
-AWS EC2 Module
-AWS S3 Module
-Module Testing
-Module Documentation
-30 Hands-on Labs
-Troubleshooting
-Interview Questions
-Enterprise Architecture
+                         INTERNET
+                            │
+                            ▼
+                 ┌─────────────────────┐
+                 │ Internet Gateway    │
+                 │       (IGW)         │
+                 └──────────┬──────────┘
+                            │
+                    ┌───────▼───────┐
+                    │     VPC       │
+                    │ 10.0.0.0/16   │
+                    └───────┬───────┘
+                            │
+             ┌──────────────┴──────────────┐
+             │                             │
+             ▼                             ▼
+      PUBLIC SUBNETS                 PRIVATE SUBNETS
+      10.0.1.0/24                    10.0.11.0/24
+      10.0.2.0/24                    10.0.12.0/24
+             │                             │
+             ▼                             ▼
+      Load Balancer / NAT             App / Database
+             │                             │
+             └──────────────┬──────────────┘
+                            │
+                         AWS Cloud
 ```
 
 ---
 
-# 🧠 1. What Is a Terraform Module?
+# 🧠 1. What Is a VPC?
 
-A Terraform module is a collection of Terraform configuration files grouped together for reuse.
+Amazon VPC provides a logically isolated virtual network in AWS.
 
-Mental model:
-
-```text
-Terraform Configuration
-        ↓
-      Module
-        ↓
-Reusable Infrastructure
-```
-
-Instead of repeating:
+Think of it as:
 
 ```text
-VPC code
-Subnet code
-Route code
-Security Group code
+AWS Account
+     │
+     ▼
+   VPC
+     │
+ ┌───┴───────────────┐
+ ▼                   ▼
+Public              Private
+Subnets             Subnets
 ```
 
-you can create:
+A VPC gives you control over:
 
 ```text
-VPC Module
+IP addressing
+Subnets
+Routing
+Gateways
+Network security
+Connectivity
 ```
-
-and reuse it.
 
 ---
 
-# 🏠 2. Real-World Analogy
+# 🏠 2. Simple Analogy
 
-Think about building houses.
-
-Without modules:
+Imagine:
 
 ```text
-House 1
- ├── Foundation
- ├── Electrical
- ├── Plumbing
-
-House 2
- ├── Foundation
- ├── Electrical
- ├── Plumbing
-
-House 3
- ├── Foundation
- ├── Electrical
- ├── Plumbing
+2400 sq.ft Office
+       ↓
+      VPC
 ```
 
-With modules:
+Rooms:
 
 ```text
-House Module
-      ↓
-Reusable Blueprint
-      ↓
-House 1
-House 2
-House 3
+Reception       → Public Subnet
+Engineering     → Private Subnet
+Database Room   → Private DB Subnet
+Security Room   → Network Controls
+Main Gate       → Internet Gateway
 ```
 
-Terraform modules are reusable infrastructure blueprints.
+Terraform becomes the architect that creates the entire office automatically.
 
 ---
 
-# 🧩 3. Root Module
+# 📐 3. CIDR Design
 
-The directory where Terraform is executed is the root module.
+Primary VPC:
+
+```text
+10.0.0.0/16
+```
+
+Conceptually:
+
+```text
+10.0.0.0 ─────────────── 10.0.255.255
+```
+
+This provides:
+
+```text
+65,536 IPv4 addresses
+```
+
+AWS reserves addresses in each subnet, so usable addresses are fewer than the mathematical CIDR total.
+
+---
+
+# 🧩 4. Subnet Plan
 
 Example:
 
-```text
-project/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-└── providers.tf
-```
-
-Run:
-
-```bash
-terraform init
-terraform plan
-terraform apply
-```
-
-The current configuration is the root module.
-
----
-
-# 🧱 4. Child Module
-
-A child module is called by another module.
-
-Example:
-
-```hcl
-module "network" {
-  source = "./modules/network"
-}
-```
+| Purpose | CIDR | Type |
+|---|---|---|
+| Public AZ-A | `10.0.1.0/24` | Public |
+| Public AZ-B | `10.0.2.0/24` | Public |
+| Private AZ-A | `10.0.11.0/24` | Private |
+| Private AZ-B | `10.0.12.0/24` | Private |
+| DB AZ-A | `10.0.21.0/24` | Private |
+| DB AZ-B | `10.0.22.0/24` | Private |
 
 Architecture:
 
 ```text
-Root Module
-     │
-     ├── Network Module
-     │
-     ├── EC2 Module
-     │
-     └── S3 Module
+VPC 10.0.0.0/16
+│
+├── Public
+│   ├── 10.0.1.0/24
+│   └── 10.0.2.0/24
+│
+├── Private
+│   ├── 10.0.11.0/24
+│   └── 10.0.12.0/24
+│
+└── Database
+    ├── 10.0.21.0/24
+    └── 10.0.22.0/24
 ```
 
 ---
 
-# 📁 5. Standard Module Structure
+# 🌍 5. Availability Zones
 
-Recommended:
-
-```text
-modules/
-└── network/
-    ├── main.tf
-    ├── variables.tf
-    ├── outputs.tf
-    ├── locals.tf
-    ├── versions.tf
-    └── README.md
-```
-
-A larger module may contain:
-
-```text
-modules/network/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── locals.tf
-├── versions.tf
-├── data.tf
-├── validation.tf
-├── README.md
-└── examples/
-```
-
-Do not create files just for the sake of having files. Organize around clarity.
-
----
-
-# 🧠 6. `main.tf`
-
-Typically contains the primary resources.
+Production networks commonly span multiple Availability Zones.
 
 Example:
 
+```text
+Region: eu-north-1
+
+AZ-A
+ ├── Public Subnet
+ ├── Private Subnet
+ └── DB Subnet
+
+AZ-B
+ ├── Public Subnet
+ ├── Private Subnet
+ └── DB Subnet
+```
+
+Benefits:
+
+```text
+High availability
+Failure isolation
+Load distribution
+```
+
+---
+
+# 🚪 6. Internet Gateway
+
+Internet Gateway connects a VPC to the internet.
+
+Architecture:
+
+```text
+Internet
+   │
+   ▼
+Internet Gateway
+   │
+   ▼
+VPC
+```
+
+Terraform:
+
 ```hcl
-resource "aws_vpc" "this" {
-  cidr_block = var.vpc_cidr
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
 
   tags = {
-    Name = var.name
+    Name = "${var.name}-igw"
   }
 }
 ```
 
 ---
 
-# 🎛️ 7. `variables.tf`
+# 🛣️ 7. Route Tables
 
-Defines module inputs.
+Public route:
 
-```hcl
-variable "name" {
-  description = "Name of the VPC"
-  type        = string
-}
-
-variable "vpc_cidr" {
-  description = "VPC CIDR"
-  type        = string
-}
+```text
+0.0.0.0/0
+      ↓
+Internet Gateway
 ```
 
----
-
-# 📤 8. `outputs.tf`
-
-Defines values exposed to the caller.
+Terraform:
 
 ```hcl
-output "vpc_id" {
-  description = "VPC ID"
-  value       = aws_vpc.this.id
-}
-```
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
 
-Caller:
-
-```hcl
-module.network.vpc_id
-```
-
----
-
-# 🧮 9. `locals.tf`
-
-Use locals for reusable calculations.
-
-```hcl
-locals {
-  common_tags = {
-    Project   = var.project
-    ManagedBy = "Terraform"
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
   }
 }
 ```
 
-Resource:
-
-```hcl
-tags = local.common_tags
-```
-
 ---
 
-# 🔢 10. `versions.tf`
+# 🏙️ 8. Public Subnet
 
-A module can declare Terraform/provider requirements.
+A subnet is considered public when its routing provides a path toward an Internet Gateway and its resources have appropriate public addressing.
 
 Example:
+
+```hcl
+resource "aws_subnet" "public" {
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = "10.0.1.0/24"
+  availability_zone = var.az_a
+
+  tags = {
+    Name = "${var.name}-public-a"
+  }
+}
+```
+
+---
+
+# 🔒 9. Private Subnet
+
+Private subnet:
+
+```text
+No direct route to Internet Gateway
+```
+
+For outbound internet access, a common architecture is:
+
+```text
+Private EC2
+    │
+    ▼
+Private Route Table
+    │
+    ▼
+NAT Gateway
+    │
+    ▼
+Internet Gateway
+    │
+    ▼
+Internet
+```
+
+---
+
+# 🚦 10. NAT Gateway
+
+NAT Gateway allows private subnet resources to initiate outbound connections without accepting unsolicited inbound connections through that NAT path.
+
+Architecture:
+
+```text
+Private Subnet
+      │
+      ▼
+NAT Gateway
+      │
+      ▼
+Public Subnet
+      │
+      ▼
+Internet Gateway
+      │
+      ▼
+Internet
+```
+
+NAT Gateway requires appropriate public-subnet routing and an Elastic IP in the common architecture.
+
+---
+
+# 💰 11. NAT Gateway Cost
+
+NAT Gateways incur AWS charges.
+
+For learning:
+
+```text
+Use only when needed
+Destroy after labs
+Monitor costs
+```
+
+Production:
+
+```text
+Design NAT placement deliberately
+Consider AZ resilience
+Estimate data-processing costs
+```
+
+Do not create unnecessary NAT Gateways.
+
+---
+
+# 🧱 12. Network ACL
+
+NACL = Network Access Control List.
+
+It operates at subnet level.
+
+Concept:
+
+```text
+Subnet
+  │
+  ▼
+NACL
+  │
+  ▼
+Resources
+```
+
+NACLs are stateless.
+
+That means:
+
+```text
+Inbound rule
++
+Outbound rule
+```
+
+must be considered independently.
+
+---
+
+# 🛡️ 13. Security Group
+
+Security Group operates at the resource/ENI level and is stateful.
+
+Example:
+
+```text
+Internet
+   │
+   ▼
+Security Group
+   │
+   ▼
+EC2
+```
+
+Security Groups commonly control:
+
+```text
+Inbound
+Outbound
+```
+
+and return traffic is handled by the stateful behavior.
+
+---
+
+# 🆚 14. NACL vs Security Group
+
+| Feature | NACL | Security Group |
+|---|---|---|
+| Scope | Subnet | ENI/resource |
+| Stateful | ❌ | ✅ |
+| Rule type | Allow + Deny | Allow |
+| Return traffic | Explicit rules | Stateful |
+| Typical use | Subnet boundary | Workload access |
+
+Use both where appropriate.
+
+---
+
+# 📁 15. Project Folder Structure
+
+```text
+12-Terraform-AWS-VPC-Project/
+│
+├── README.md
+│
+├── terraform/
+│   ├── versions.tf
+│   ├── provider.tf
+│   ├── variables.tf
+│   ├── locals.tf
+│   ├── vpc.tf
+│   ├── subnets.tf
+│   ├── route_tables.tf
+│   ├── nat.tf
+│   ├── nacl.tf
+│   ├── security_groups.tf
+│   ├── outputs.tf
+│   ├── terraform.tfvars.example
+│   └── .gitignore
+│
+├── modules/
+│   └── vpc/
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       └── versions.tf
+│
+└── examples/
+    └── basic/
+        └── README.md
+```
+
+---
+
+# ⚙️ 16. Provider Configuration
+
+`provider.tf`:
 
 ```hcl
 terraform {
@@ -315,374 +474,36 @@ terraform {
     }
   }
 }
-```
 
-Choose constraints based on the versions your project actually supports.
-
----
-
-# 📦 11. Calling a Local Module
-
-Root module:
-
-```hcl
-module "network" {
-  source = "./modules/network"
-
-  name     = "vishwatech-dev"
-  vpc_cidr = "10.0.0.0/16"
+provider "aws" {
+  region = var.aws_region
 }
 ```
 
-Architecture:
-
-```text
-root/
-│
-├── main.tf
-│
-└── modules/
-    └── network/
-        ├── main.tf
-        ├── variables.tf
-        └── outputs.tf
-```
+Use a provider version compatible with your project.
 
 ---
 
-# 🔗 12. Module Inputs
+# 📋 17. Variables
 
-The caller passes values:
+`variables.tf`:
 
 ```hcl
-module "network" {
-  source = "./modules/network"
-
-  name     = var.name
-  vpc_cidr = var.vpc_cidr
+variable "aws_region" {
+  description = "AWS region"
+  type        = string
+  default     = "eu-north-1"
 }
-```
 
-Inside module:
-
-```hcl
-var.name
-var.vpc_cidr
-```
-
-Think:
-
-```text
-Root Module
-     │
-     │ inputs
-     ▼
-Child Module
-```
-
----
-
-# 📤 13. Module Outputs
-
-Child module:
-
-```hcl
-output "vpc_id" {
-  value = aws_vpc.this.id
+variable "project_name" {
+  description = "Project name"
+  type        = string
+  default     = "vishwatech"
 }
-```
 
-Root module:
-
-```hcl
-output "network_vpc_id" {
-  value = module.network.vpc_id
-}
-```
-
-Architecture:
-
-```text
-Child Resource
-     ↓
-Module Output
-     ↓
-Root Module
-     ↓
-Root Output
-```
-
----
-
-# 🔄 14. Module Composition
-
-A powerful pattern:
-
-```text
-Root
- │
- ├── Network
- │    ├── VPC
- │    ├── Subnets
- │    └── Routes
- │
- ├── Security
- │    └── Security Groups
- │
- └── Application
-      ├── EC2
-      └── Load Balancer
-```
-
-Each module has a focused responsibility.
-
----
-
-# 🧱 15. Module Boundaries
-
-Good module:
-
-```text
-network
-```
-
-owns:
-
-```text
-VPC
-Subnets
-Routes
-Gateways
-```
-
-Another:
-
-```text
-application
-```
-
-owns:
-
-```text
-Compute
-Load Balancer
-Application configuration
-```
-
-Avoid creating modules so tiny that the architecture becomes difficult to understand.
-
----
-
-# 🧠 16. Module Design Principle
-
-A good module should have:
-
-```text
-Clear purpose
-Stable interface
-Useful inputs
-Useful outputs
-Minimal hidden behavior
-Good documentation
-Versioning
-Tests/examples
-```
-
-Think:
-
-```text
-Module = Product
-```
-
-It has:
-
-```text
-API → variables
-Output → outputs
-Implementation → resources
-Documentation → README
-Version → Git/Registry
-```
-
----
-
-# 📥 17. Module Source Types
-
-Terraform supports module sources such as:
-
-```text
-Local paths
-Git repositories
-GitHub
-Terraform Registry
-Other supported VCS/archive sources
-```
-
-Examples:
-
-```hcl
-source = "./modules/network"
-```
-
-Git:
-
-```hcl
-source = "git::https://github.com/example/network.git?ref=v1.0.0"
-```
-
-Registry:
-
-```hcl
-source  = "terraform-aws-modules/vpc/aws"
-version = "~> 6.0"
-```
-
-Always verify the module's current documentation and supported version before use.
-
----
-
-# 🌐 18. Terraform Registry Modules
-
-Registry modules provide reusable community/vendor modules.
-
-Typical syntax:
-
-```hcl
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.0"
-
-  # inputs
-}
-```
-
-Advantages:
-
-```text
-Reusable
-Community reviewed
-Documented
-Versioned
-Faster development
-```
-
-But:
-
-```text
-Do not blindly trust third-party modules.
-```
-
-Review:
-
-```text
-Source
-Version
-Resources
-Permissions
-Security
-Dependencies
-Release history
-```
-
----
-
-# 🔒 19. Pin Module Versions
-
-Avoid:
-
-```hcl
-source = "terraform-aws-modules/vpc/aws"
-```
-
-for production when versioning is available.
-
-Prefer:
-
-```hcl
-version = "~> 6.0"
-```
-
-or another deliberate constraint.
-
-For Git:
-
-```hcl
-?ref=v1.2.0
-```
-
-Predictability matters.
-
----
-
-# 🏷️ 20. Semantic Versioning
-
-Common pattern:
-
-```text
-MAJOR.MINOR.PATCH
-```
-
-Example:
-
-```text
-v2.4.1
-```
-
-Meaning conceptually:
-
-```text
-2 → major
-4 → minor
-1 → patch
-```
-
-A major version may introduce breaking interface changes.
-
----
-
-# 🧩 21. Module Interface
-
-Think:
-
-```text
-                 MODULE
-        ┌─────────────────────┐
-Inputs →│                     │→ Outputs
-        │    Resources        │
-        │    Data Sources     │
-        │    Locals            │
-        └─────────────────────┘
-```
-
-Inputs:
-
-```text
-Variables
-```
-
-Outputs:
-
-```text
-Outputs
-```
-
-Implementation:
-
-```text
-Resources
-Data Sources
-Locals
-```
-
----
-
-# 🔐 22. Variable Validation
-
-Example:
-
-```hcl
 variable "environment" {
-  type = string
+  description = "Environment"
+  type        = string
 
   validation {
     condition = contains(
@@ -690,1303 +511,1060 @@ variable "environment" {
       var.environment
     )
 
-    error_message = "Environment must be dev, stage, or prod."
+    error_message = "Use dev, stage, or prod."
+  }
+}
+
+variable "vpc_cidr" {
+  description = "VPC CIDR"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+```
+
+---
+
+# 🏷️ 18. Locals
+
+`locals.tf`:
+
+```hcl
+locals {
+  name_prefix = "${var.project_name}-${var.environment}"
+
+  common_tags = {
+    Project     = var.project_name
+    Environment = var.environment
+    ManagedBy   = "Terraform"
   }
 }
 ```
 
-This creates a strong module contract.
-
 ---
 
-# 🧠 23. Optional Inputs
+# 🌐 19. VPC Resource
 
-Terraform supports optional object attributes and defaults in supported type expressions.
-
-Example:
+`vpc.tf`:
 
 ```hcl
-variable "settings" {
-  type = object({
-    instance_type = optional(string, "t3.micro")
-    monitoring    = optional(bool, true)
-  })
-}
-```
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
 
-Use optional attributes to keep interfaces manageable.
-
-Avoid creating hundreds of optional switches.
-
----
-
-# 🏷️ 24. Module Tags
-
-A reusable module can standardize tags:
-
-```hcl
-variable "tags" {
-  type    = map(string)
-  default = {}
-}
-
-locals {
   tags = merge(
-    var.tags,
+    local.common_tags,
     {
-      ManagedBy = "Terraform"
+      Name = "${local.name_prefix}-vpc"
     }
   )
 }
 ```
 
-Be clear about which tags the caller controls and which are module-enforced.
+---
+
+# 🚪 20. Internet Gateway
+
+```hcl
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-igw"
+    }
+  )
+}
+```
 
 ---
 
-# 🌐 25. AWS VPC Module — Basic
-
-Variables:
+# 🏘️ 21. Public Subnets
 
 ```hcl
-variable "name" {
-  type = string
-}
+variable "availability_zones" {
+  type = list(string)
 
-variable "cidr" {
-  type = string
+  default = [
+    "eu-north-1a",
+    "eu-north-1b"
+  ]
 }
 ```
 
-Resource:
-
 ```hcl
-resource "aws_vpc" "this" {
-  cidr_block = var.cidr
-
-  tags = {
-    Name = var.name
+resource "aws_subnet" "public" {
+  for_each = {
+    a = "10.0.1.0/24"
+    b = "10.0.2.0/24"
   }
+
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = each.value
+  availability_zone = var.availability_zones[each.key == "a" ? 0 : 1]
+
+  map_public_ip_on_launch = true
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-public-${each.key}"
+      Tier = "public"
+    }
+  )
 }
 ```
 
-Output:
+For a larger design, use explicit subnet objects/maps instead of embedding positional AZ logic.
+
+---
+
+# 🔒 22. Private Subnets
+
+```hcl
+resource "aws_subnet" "private" {
+  for_each = {
+    a = "10.0.11.0/24"
+    b = "10.0.12.0/24"
+  }
+
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = each.value
+  availability_zone = var.availability_zones[each.key == "a" ? 0 : 1]
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-private-${each.key}"
+      Tier = "private"
+    }
+  )
+}
+```
+
+---
+
+# 🛣️ 23. Public Route Table
+
+```hcl
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-public-rt"
+    }
+  )
+}
+```
+
+---
+
+# 🔗 24. Public Route Associations
+
+```hcl
+resource "aws_route_table_association" "public" {
+  for_each = aws_subnet.public
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public.id
+}
+```
+
+---
+
+# 💳 25. Elastic IP for NAT
+
+```hcl
+resource "aws_eip" "nat" {
+  domain = "vpc"
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-nat-eip"
+    }
+  )
+}
+```
+
+---
+
+# 🚦 26. NAT Gateway
+
+```hcl
+resource "aws_nat_gateway" "this" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public["a"].id
+
+  depends_on = [
+    aws_internet_gateway.this
+  ]
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-nat"
+    }
+  )
+}
+```
+
+For high availability, production architectures often use NAT Gateway per AZ or another deliberate egress strategy.
+
+---
+
+# 🔐 27. Private Route Table
+
+```hcl
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this.id
+  }
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-private-rt"
+    }
+  )
+}
+```
+
+---
+
+# 🔗 28. Private Associations
+
+```hcl
+resource "aws_route_table_association" "private" {
+  for_each = aws_subnet.private
+
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.private.id
+}
+```
+
+---
+
+# 🛡️ 29. Security Group
+
+Example application Security Group:
+
+```hcl
+resource "aws_security_group" "app" {
+  name        = "${local.name_prefix}-app-sg"
+  description = "Application security group"
+  vpc_id      = aws_vpc.this.id
+
+  ingress {
+    description = "HTTPS"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = local.common_tags
+}
+```
+
+Production rules should be restricted to actual application requirements.
+
+---
+
+# 🧱 30. NACL Example
+
+A basic custom NACL:
+
+```hcl
+resource "aws_network_acl" "private" {
+  vpc_id = aws_vpc.this.id
+
+  tags = merge(
+    local.common_tags,
+    {
+      Name = "${local.name_prefix}-private-nacl"
+    }
+  )
+}
+```
+
+Remember:
+
+```text
+NACL = Stateless
+Security Group = Stateful
+```
+
+Do not copy generic allow-all NACL rules into production without a security design.
+
+---
+
+# 📤 31. Outputs
+
+`outputs.tf`:
 
 ```hcl
 output "vpc_id" {
-  value = aws_vpc.this.id
+  description = "VPC ID"
+  value       = aws_vpc.this.id
+}
+
+output "public_subnet_ids" {
+  description = "Public subnet IDs"
+  value       = values(aws_subnet.public)[*].id
+}
+
+output "private_subnet_ids" {
+  description = "Private subnet IDs"
+  value       = values(aws_subnet.private)[*].id
+}
+
+output "nat_gateway_id" {
+  description = "NAT Gateway ID"
+  value       = aws_nat_gateway.this.id
 }
 ```
 
-Caller:
+---
+
+# 🧪 32. Example Variables File
+
+Never commit real secrets.
+
+`terraform.tfvars.example`:
+
+```hcl
+aws_region  = "eu-north-1"
+project_name = "vishwatech"
+environment  = "dev"
+
+vpc_cidr = "10.0.0.0/16"
+
+availability_zones = [
+  "eu-north-1a",
+  "eu-north-1b"
+]
+```
+
+Copy:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+
+Then customize locally.
+
+---
+
+# 🚫 33. `.gitignore`
+
+```gitignore
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+crash.log
+crash.*.log
+```
+
+Keep the example file tracked:
+
+```text
+terraform.tfvars.example
+```
+
+---
+
+# 🚀 34. Terraform Workflow
+
+Initialize:
+
+```bash
+terraform init
+```
+
+Format:
+
+```bash
+terraform fmt -recursive
+```
+
+Validate:
+
+```bash
+terraform validate
+```
+
+Plan:
+
+```bash
+terraform plan
+```
+
+Apply:
+
+```bash
+terraform apply
+```
+
+Destroy:
+
+```bash
+terraform destroy
+```
+
+---
+
+# 🔍 35. Verify AWS Infrastructure
+
+Check:
+
+```text
+VPC
+Subnets
+Route Tables
+Internet Gateway
+NAT Gateway
+Elastic IP
+Security Groups
+NACLs
+```
+
+CLI examples:
+
+```bash
+aws ec2 describe-vpcs
+```
+
+```bash
+aws ec2 describe-subnets
+```
+
+```bash
+aws ec2 describe-route-tables
+```
+
+Use the AWS CLI identity that corresponds to the intended account/role.
+
+---
+
+# 🧪 36. Connectivity Testing
+
+Do not test by exposing everything to the internet.
+
+Better:
+
+```text
+Public test workload
+        ↓
+Private test workload
+        ↓
+Controlled Security Groups
+```
+
+Test:
+
+```text
+Public → Internet
+Private → Internet through NAT
+Private → Public only when explicitly allowed
+```
+
+---
+
+# 🧠 37. Terraform Dependency Graph
+
+Run:
+
+```bash
+terraform graph
+```
+
+Concept:
+
+```text
+VPC
+ │
+ ├── IGW
+ │    │
+ │    └── Public Route
+ │
+ ├── Public Subnets
+ │
+ └── Private Subnets
+      │
+      └── NAT Route
+```
+
+This helps students understand Terraform's dependency engine.
+
+---
+
+# 🔄 38. Module Version of the Project
+
+Later refactor:
+
+```text
+root/
+│
+├── main.tf
+│
+└── modules/
+    └── vpc/
+        ├── main.tf
+        ├── variables.tf
+        ├── outputs.tf
+        └── versions.tf
+```
+
+Root:
 
 ```hcl
 module "vpc" {
   source = "./modules/vpc"
 
-  name = "vishwatech-dev"
-  cidr = "10.0.0.0/16"
-}
-```
-
----
-
-# 🌐 26. AWS VPC Module — Production Pattern
-
-A mature VPC module may expose:
-
-```text
-VPC CIDR
-Availability Zones
-Public subnet CIDRs
-Private subnet CIDRs
-Database subnet CIDRs
-NAT gateway strategy
-DNS settings
-Tags
-Flow logs
-Endpoints
-```
-
-Architecture:
-
-```text
-VPC Module
-│
-├── VPC
-├── Internet Gateway
-├── Public Subnets
-├── Private Subnets
-├── Route Tables
-├── NAT
-├── Network ACLs
-└── Outputs
-```
-
----
-
-# 🖥️ 27. AWS EC2 Module
-
-Inputs:
-
-```hcl
-variable "ami_id" {
-  type = string
-}
-
-variable "instance_type" {
-  type = string
-}
-
-variable "subnet_id" {
-  type = string
-}
-```
-
-Resource:
-
-```hcl
-resource "aws_instance" "this" {
-  ami           = var.ami_id
-  instance_type = var.instance_type
-  subnet_id     = var.subnet_id
-}
-```
-
-Output:
-
-```hcl
-output "instance_id" {
-  value = aws_instance.this.id
-}
-```
-
----
-
-# 🪣 28. AWS S3 Module
-
-A simple module can expose:
-
-```text
-Bucket name
-Versioning
-Encryption
-Tags
-Lifecycle configuration
-Access controls
-```
-
-Example:
-
-```hcl
-variable "bucket_name" {
-  type = string
-}
-
-resource "aws_s3_bucket" "this" {
-  bucket = var.bucket_name
-}
-
-output "bucket_id" {
-  value = aws_s3_bucket.this.id
-}
-```
-
-For production, follow current AWS S3 security recommendations and the provider's resource model.
-
----
-
-# 🔢 29. `count` with Modules
-
-Example:
-
-```hcl
-module "app" {
-  source = "./modules/app"
-
-  count = 2
-
+  name       = "vishwatech-dev"
+  vpc_cidr   = "10.0.0.0/16"
   environment = "dev"
 }
 ```
 
-Addresses:
+---
+
+# 🏢 39. Production Architecture
 
 ```text
-module.app[0]
-module.app[1]
+                         Internet
+                            │
+                            ▼
+                         IGW
+                            │
+                 ┌──────────▼──────────┐
+                 │       VPC            │
+                 │    10.0.0.0/16       │
+                 └──────────┬───────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              │                           │
+           AZ-A                         AZ-B
+              │                           │
+       ┌──────┴──────┐             ┌──────┴──────┐
+       │             │             │             │
+     Public       Private        Public        Private
+       │             │             │             │
+       │             ▼             │             ▼
+       │            NAT            │            NAT
+       │             │             │             │
+       └─────────────┴─────────────┴─────────────┘
+                            │
+                         Services
 ```
 
-Use when numeric instances are appropriate.
+For highly available production, evaluate AZ-specific NAT architecture and egress requirements.
 
 ---
 
-# 🔁 30. `for_each` with Modules
+# 💰 40. Cost Considerations
 
-Example:
-
-```hcl
-module "app" {
-  source = "./modules/app"
-
-  for_each = {
-    web = "t3.small"
-    api = "t3.medium"
-  }
-
-  instance_type = each.value
-  name          = each.key
-}
-```
-
-Addresses:
+Main cost considerations:
 
 ```text
-module.app["web"]
-module.app["api"]
+NAT Gateway
+Elastic IP behavior
+Data processing
+Load Balancers
+VPC endpoints
+Cross-AZ traffic
 ```
 
-Excellent for identity-based module instances.
-
----
-
-# 🔌 31. Passing Providers to Modules
-
-A module can receive provider configurations from its caller.
-
-Root:
-
-```hcl
-provider "aws" {
-  region = "us-east-1"
-}
-
-provider "aws" {
-  alias  = "dr"
-  region = "eu-north-1"
-}
-```
-
-Module call:
-
-```hcl
-module "dr" {
-  source = "./modules/network"
-
-  providers = {
-    aws = aws.dr
-  }
-}
-```
-
-Provider requirements should be declared appropriately inside the module.
-
----
-
-# 🌍 32. Multi-Region Modules
-
-Architecture:
-
-```text
-Root
- │
- ├── Network → us-east-1
- │
- └── Network → eu-north-1
-```
-
-Each module instance can receive the appropriate provider configuration.
-
-Useful for:
-
-```text
-DR
-Global applications
-Regional infrastructure
-Multi-region data services
-```
-
----
-
-# 🔗 33. Module Dependencies
-
-Modules can have implicit dependencies through values.
-
-Example:
-
-```hcl
-module "network" {
-  source = "./modules/network"
-}
-```
-
-Then:
-
-```hcl
-module "app" {
-  source    = "./modules/app"
-  subnet_id = module.network.private_subnet_id
-}
-```
-
-Terraform understands:
-
-```text
-Network
-   ↓
-Application
-```
-
-Prefer value references over unnecessary `depends_on`.
-
----
-
-# ⚠️ 34. Module `depends_on`
-
-Terraform supports dependencies on module blocks.
-
-Example:
-
-```hcl
-module "app" {
-  source = "./modules/app"
-
-  depends_on = [
-    module.network
-  ]
-}
-```
-
-Use only when a real dependency exists that is not represented by input/output references.
-
----
-
-# 🧠 35. Nested Modules
-
-A module can call another module:
-
-```text
-Root
- │
- └── Platform Module
-       │
-       ├── Network Module
-       ├── Security Module
-       └── Compute Module
-```
-
-Be careful with deep nesting.
-
-A useful rule:
-
-```text
-Prefer understandable composition
-over clever abstraction.
-```
-
----
-
-# 🧱 36. Module Composition Pattern
-
-Enterprise:
-
-```text
-platform/
-│
-├── network
-├── security
-├── identity
-├── observability
-└── application
-```
-
-Root environment:
-
-```text
-environments/prod/
-       │
-       └── main.tf
-              │
-              ├── network
-              ├── security
-              └── application
-```
-
----
-
-# 🏗️ 37. Module Repository Pattern
-
-A dedicated module repository:
-
-```text
-terraform-aws-vpc/
-├── main.tf
-├── variables.tf
-├── outputs.tf
-├── versions.tf
-├── README.md
-├── CHANGELOG.md
-├── examples/
-│   ├── basic/
-│   └── complete/
-└── tests/
-```
-
-This is suitable for modules that are shared across many projects.
-
----
-
-# 📚 38. Module Documentation
-
-A good README should contain:
-
-```text
-Description
-Architecture
-Requirements
-Providers
-Inputs
-Outputs
-Usage
-Examples
-Versioning
-Security
-Upgrade Guide
-Changelog
-```
-
-Example:
-
-```markdown
-## Usage
-
-module "network" {
-  source = "..."
-
-  name = "prod"
-}
-```
-
----
-
-# 🧪 39. Module Examples
-
-Create examples:
-
-```text
-examples/
-├── basic/
-│   ├── main.tf
-│   └── README.md
-│
-└── complete/
-    ├── main.tf
-    └── README.md
-```
-
-Examples are valuable for:
-
-```text
-Documentation
-Validation
-Learning
-Regression testing
-```
-
----
-
-# 🔬 40. Testing Modules
-
-A module should be tested before production use.
-
-Testing levels:
-
-```text
-terraform fmt
-terraform validate
-terraform plan
-Integration tests
-Policy checks
-Security scanning
-```
-
-Terraform also has testing capabilities in modern versions.
-
-Use the official testing documentation for the exact syntax supported by your Terraform version.
-
----
-
-# 🔍 41. Module Security Review
-
-Before using a third-party module:
-
-```text
-☑ Source verified
-☑ Version pinned
-☑ Git/Registry origin trusted
-☑ Resources reviewed
-☑ IAM reviewed
-☑ Data sources reviewed
-☑ External commands reviewed
-☑ Provider requirements reviewed
-☑ Outputs reviewed
-☑ Sensitive values reviewed
-```
-
-Never assume:
-
-```text
-Popular module = automatically safe
-```
-
----
-
-# 🔐 42. Sensitive Module Outputs
-
-If a module returns a secret:
-
-```hcl
-output "password" {
-  value     = aws_db_instance.this.password
-  sensitive = true
-}
-```
-
-Important:
-
-```text
-sensitive = true
-```
-
-helps prevent accidental display in normal CLI output.
-
-It does **not** mean the value is removed from Terraform state.
-
-Protect the state backend accordingly.
-
----
-
-# 🧠 43. Module Version Upgrade
-
-Suppose:
-
-```text
-v1.2.0
-```
-
-becomes:
-
-```text
-v2.0.0
-```
-
-Before upgrading:
-
-```text
-Read changelog
-Review breaking changes
-Review provider requirements
-Test in dev
-Run plan
-Review replacements
-Test staging
-Then production
-```
-
-Never blindly upgrade a production module.
-
----
-
-# 🔄 44. Module Refactoring
-
-Suppose resource:
-
-```text
-aws_vpc.main
-```
-
-moves into:
-
-```text
-module.network.aws_vpc.main
-```
-
-If the infrastructure object remains the same, use a `moved` block where appropriate:
-
-```hcl
-moved {
-  from = aws_vpc.main
-  to   = module.network.aws_vpc.main
-}
-```
-
-Then:
+For labs:
 
 ```bash
-terraform plan
+terraform destroy
 ```
 
-should show a state address move rather than unnecessary replacement when the migration is correct.
+after completing the exercise.
 
 ---
 
-# 🧩 45. Module State Addresses
-
-Root:
+# 🔐 41. Security Best Practices
 
 ```text
-module.network
+☑ Use private subnets for internal workloads
+☑ Minimize public IP addresses
+☑ Restrict Security Group sources
+☑ Avoid 0.0.0.0/0 unless required
+☑ Use least privilege
+☑ Use VPC endpoints where appropriate
+☑ Protect state
+☑ Encrypt sensitive services
+☑ Enable logging/monitoring
+☑ Separate environments
 ```
-
-Resource:
-
-```text
-module.network.aws_vpc.this
-```
-
-With `for_each`:
-
-```text
-module.network["prod"].aws_vpc.this
-```
-
-With nested module:
-
-```text
-module.platform.module.network.aws_vpc.this
-```
-
-Understanding addresses is critical for refactoring.
 
 ---
 
-# ⚡ 46. Module Anti-Patterns
+# 🚨 42. Common Mistakes
+
+### Mistake 1 — Overlapping CIDRs
+
+Bad:
+
+```text
+10.0.1.0/24
+10.0.1.0/24
+```
+
+Fix:
+
+```text
+10.0.1.0/24
+10.0.2.0/24
+```
+
+---
+
+### Mistake 2 — Private Subnet Has IGW Route
+
+Private subnet should not normally have:
+
+```text
+0.0.0.0/0 → IGW
+```
+
+Use NAT or another approved egress architecture when internet access is required.
+
+---
+
+### Mistake 3 — NAT in Private Subnet
+
+NAT Gateway should be placed in a public subnet in the common design.
+
+---
+
+### Mistake 4 — Open SSH
 
 Avoid:
 
 ```text
-❌ One module containing the entire company
-❌ 100+ unrelated variables
-❌ Hidden resource creation
-❌ Excessive nested modules
-❌ Unpinned external modules
-❌ Hardcoded credentials
-❌ Provider configuration hidden unexpectedly
-❌ Outputs for everything
-❌ Every tiny resource becoming a module
-❌ Breaking interface changes without versioning
+0.0.0.0/0
+TCP 22
+```
+
+Prefer:
+
+```text
+Bastion/SSM/VPN/controlled source
+```
+
+according to your architecture.
+
+---
+
+# 🔍 43. Troubleshooting
+
+## Private Instance Has No Internet
+
+Check:
+
+```text
+Private route table
+NAT Gateway
+NAT subnet
+Public route
+Internet Gateway
+Elastic IP
+Security Group
+NACL
 ```
 
 ---
 
-# 🏆 47. Good vs Bad Module
+## Public Instance Has No Internet
 
-### Bad
-
-```text
-MegaModule
- ├── VPC
- ├── EKS
- ├── RDS
- ├── IAM
- ├── S3
- ├── CloudFront
- ├── Lambda
- └── Everything
-```
-
-### Better
+Check:
 
 ```text
-Network Module
-Security Module
-Data Module
-Compute Module
-Application Module
-```
-
-Then compose them at the environment/platform layer.
-
----
-
-# 🏢 48. Enterprise Module Architecture
-
-```text
-                    GitHub
-                      │
-                      ▼
-              Module Repositories
-                      │
-        ┌─────────────┼─────────────┐
-        ▼             ▼             ▼
-   Network Module  Security      Compute
-        │             │             │
-        └─────────────┼─────────────┘
-                      ▼
-                Platform Layer
-                      │
-             ┌────────┴────────┐
-             ▼                 ▼
-           DEV               PROD
-             │                 │
-             ▼                 ▼
-         AWS Account       AWS Account
+Public route table
+0.0.0.0/0 → IGW
+Public IP
+Security Group
+NACL
 ```
 
 ---
 
-# 🧠 49. Module Contract
+## NAT Gateway Not Working
 
-Think like an API:
-
-```text
-             MODULE API
-                 │
-      ┌──────────┴──────────┐
-      ▼                     ▼
-   Inputs                 Outputs
-      │                     │
-      ▼                     ▼
- variables              outputs
-      │                     │
-      └──────────┬──────────┘
-                 ▼
-            Implementation
-```
-
-If you change:
+Check:
 
 ```text
-variable name
-variable type
-required input
-output name
-output meaning
+NAT Gateway state
+EIP
+Public subnet
+Public route
+IGW
+Private route
 ```
-
-you may be changing the module API.
-
-Treat it like software.
 
 ---
 
-# 🧪 50. Hands-On Labs
+## Terraform Wants to Recreate Resources
 
-## Lab 01 — Create First Module
-
-Build a simple AWS VPC module.
-
-## Lab 02 — Add Variables
-
-Parameterize:
-
-```text
-name
-cidr
-```
-
-## Lab 03 — Add Outputs
-
-Expose:
-
-```text
-vpc_id
-```
-
-## Lab 04 — Local Module
-
-Call:
-
-```text
-./modules/vpc
-```
-
-## Lab 05 — Add Tags
-
-Create reusable tag inputs.
-
-## Lab 06 — Validation
-
-Validate environment values.
-
-## Lab 07 — Optional Object
-
-Create configurable module settings.
-
-## Lab 08 — VPC Subnets
-
-Add public/private subnet support.
-
-## Lab 09 — EC2 Module
-
-Build reusable EC2 module.
-
-## Lab 10 — S3 Module
-
-Build reusable S3 module.
-
-## Lab 11 — Module Composition
-
-Combine:
-
-```text
-VPC
-Security
-EC2
-```
-
-## Lab 12 — `for_each` Module
-
-Create application modules for:
-
-```text
-web
-api
-worker
-```
-
-## Lab 13 — `count` Module
-
-Create multiple test instances.
-
-## Lab 14 — Provider Alias
-
-Deploy module to another region.
-
-## Lab 15 — Multi-Region Modules
-
-Create:
-
-```text
-primary
-DR
-```
-
-## Lab 16 — Git Module
-
-Consume a Git-hosted module.
-
-## Lab 17 — Versioned Git Module
-
-Pin a release/tag.
-
-## Lab 18 — Registry Module
-
-Consume a Registry module.
-
-## Lab 19 — Registry Version Pinning
-
-Test a version constraint.
-
-## Lab 20 — Module Documentation
-
-Build a professional README.
-
-## Lab 21 — Examples
-
-Create:
-
-```text
-basic
-complete
-```
-
-examples.
-
-## Lab 22 — Module Validation
-
-Run:
+Check:
 
 ```bash
-terraform fmt
-terraform validate
+terraform plan
 ```
 
-## Lab 23 — Module Testing
+Then inspect:
 
-Build Terraform tests supported by your Terraform version.
+```text
+CIDR changes
+AZ changes
+Resource addresses
+Provider changes
+State
+Lifecycle
+```
 
-## Lab 24 — Module Refactoring
+---
 
-Move resources into a module using `moved`.
+# 🧪 44. Hands-On Labs
 
-## Lab 25 — Module Upgrade
-
-Upgrade a module version safely.
-
-## Lab 26 — Security Review
-
-Review a third-party module.
-
-## Lab 27 — Sensitive Outputs
-
-Practice sensitive output handling.
-
-## Lab 28 — Nested Modules
-
-Build controlled composition.
-
-## Lab 29 — Enterprise Platform Module
+## Lab 01 — Create VPC
 
 Create:
 
 ```text
-network
-security
-compute
+10.0.0.0/16
 ```
 
-composition.
+## Lab 02 — Internet Gateway
+
+Attach IGW.
+
+## Lab 03 — Public Subnet
+
+Create:
+
+```text
+10.0.1.0/24
+```
+
+## Lab 04 — Public Route
+
+Create:
+
+```text
+0.0.0.0/0 → IGW
+```
+
+## Lab 05 — Private Subnet
+
+Create:
+
+```text
+10.0.11.0/24
+```
+
+## Lab 06 — NAT Gateway
+
+Create NAT architecture.
+
+## Lab 07 — Private Route
+
+Route private subnet through NAT.
+
+## Lab 08 — Multi-AZ
+
+Create two AZs.
+
+## Lab 09 — Security Group
+
+Create application SG.
+
+## Lab 10 — NACL
+
+Create custom NACL.
+
+## Lab 11 — Outputs
+
+Expose all important IDs.
+
+## Lab 12 — Variables
+
+Parameterize CIDRs.
+
+## Lab 13 — Locals
+
+Create common tags.
+
+## Lab 14 — `for_each`
+
+Generate subnets dynamically.
+
+## Lab 15 — CIDR Functions
+
+Generate subnets using:
+
+```hcl
+cidrsubnet()
+```
+
+## Lab 16 — Add EC2
+
+Deploy test EC2 into public subnet.
+
+## Lab 17 — Private EC2
+
+Deploy test EC2 into private subnet.
+
+## Lab 18 — NAT Connectivity
+
+Verify controlled outbound connectivity.
+
+## Lab 19 — VPC Flow Logs
+
+Add logging according to your requirements.
+
+## Lab 20 — VPC Endpoints
+
+Add an endpoint for a supported AWS service.
+
+## Lab 21 — Module Refactor
+
+Move VPC into a module.
+
+## Lab 22 — Remote State
+
+Move state to S3.
+
+## Lab 23 — Multi-Environment
+
+Build:
+
+```text
+dev
+stage
+prod
+```
+
+## Lab 24 — Multi-Region
+
+Create a second-region network.
+
+## Lab 25 — Provider Alias
+
+Use aliased AWS provider.
+
+## Lab 26 — State Refactor
+
+Use `moved` blocks.
+
+## Lab 27 — Security Hardening
+
+Remove unnecessary public access.
+
+## Lab 28 — Cost Review
+
+Identify NAT/data-processing costs.
+
+## Lab 29 — Destroy and Recreate
+
+Practice clean lifecycle.
 
 ## Lab 30 — Enterprise Challenge
 
 Build:
 
 ```text
-Root
- │
- ├── Network Module
- ├── Security Module
- ├── Compute Module
- └── Data Module
-       │
-       ▼
-   AWS Infrastructure
+VPC
+├── 2 AZ
+├── Public Subnets
+├── Private Subnets
+├── IGW
+├── NAT
+├── Route Tables
+├── SG
+├── NACL
+├── Flow Logs
+└── Outputs
 ```
 
-with:
+using:
 
 ```text
-Versioning
+Terraform
+Modules
 Remote State
-Provider Aliases
-CI/CD
-Security
-Testing
-Documentation
+GitHub Actions
+Security Controls
 ```
 
 ---
 
-# 🏆 51. Production Module Checklist
+# 🏆 45. Production Checklist
 
 ```text
-☑ Clear module purpose
-☑ Stable interface
-☑ Typed variables
-☑ Variable validation
-☑ Useful outputs
-☑ Minimal hidden behavior
-☑ Provider requirements
-☑ Versioning
+NETWORK
+☑ Non-overlapping CIDRs
+☑ Multi-AZ design
+☑ Public/private separation
+☑ Route tables
+☑ IGW
+☑ NAT strategy
+
+SECURITY
+☑ Restricted SGs
+☑ NACL strategy
+☑ No unnecessary public IPs
+☑ Controlled administrative access
+☑ Flow logs where required
+
+TERRAFORM
+☑ Variables
+☑ Outputs
+☑ Modules
+☑ Provider version
+☑ Remote state
+☑ Locking
+☑ CI/CD
+
+OPERATIONS
+☑ Cost monitoring
+☑ Backup/recovery
 ☑ Documentation
-☑ Examples
-☑ Tests
-☑ Security review
-☑ Upgrade strategy
-☑ Changelog
-☑ No credentials
-☑ No accidental destructive defaults
+☑ Destroy lab resources
+☑ Change review
 ```
 
 ---
 
-# 🚨 52. Troubleshooting
-
-## Module Not Found
-
-Check:
-
-```text
-source
-path
-Git URL
-Registry namespace
-network access
-```
-
----
-
-## Version Constraint Error
-
-Check:
-
-```text
-Terraform version
-Provider version
-Module version
-Dependency constraints
-```
-
----
-
-## Provider Configuration Error
-
-Check:
-
-```text
-required_providers
-provider aliases
-providers map
-root provider configuration
-```
-
----
-
-## Unexpected Resource Replacement
-
-Check:
-
-```text
-module version
-resource address
-moved blocks
-input changes
-provider changes
-state
-```
-
-Run:
-
-```bash
-terraform plan
-```
-
-and inspect the exact resource address.
-
----
-
-## Module Dependency Cycle
-
-Architecture:
-
-```text
-Module A
-   ↓
-Module B
-   ↓
-Module A
-```
-
-Break the cycle by redesigning module boundaries or passing only necessary values.
-
----
-
-# 🎓 53. Interview Questions
+# 🎓 46. Interview Questions
 
 ### Beginner
 
-1. What is a Terraform module?
-2. What is the root module?
-3. What is a child module?
-4. What are module inputs?
-5. What are module outputs?
-6. What is `source`?
-7. What is a local module?
-8. What is a Registry module?
-9. Why use modules?
-10. What is module versioning?
+1. What is a VPC?
+2. What is CIDR?
+3. What is a subnet?
+4. Public vs private subnet?
+5. What is an Internet Gateway?
+6. What is a route table?
+7. What is a NAT Gateway?
+8. What is a Security Group?
+9. What is a NACL?
+10. What is an Availability Zone?
 
 ### Intermediate
 
-11. How do you pass variables to modules?
-12. How do you consume module outputs?
-13. How do `count` and `for_each` work with modules?
-14. How do provider aliases work with modules?
-15. How do modules depend on each other?
-16. How do you structure an AWS VPC module?
-17. How do you validate module inputs?
-18. How do you test modules?
-19. How do you document modules?
-20. How do you secure third-party modules?
+11. How does private subnet internet access work?
+12. Why does NAT Gateway need a public subnet?
+13. NACL vs Security Group?
+14. How do route table associations work?
+15. How do you design a multi-AZ VPC?
+16. How do you calculate subnet CIDRs?
+17. How would you use `for_each` for subnets?
+18. How would you modularize a VPC?
+19. How do you secure Terraform state?
+20. How do you troubleshoot NAT connectivity?
 
 ### Advanced
 
-21. Design a reusable enterprise VPC module.
-22. How would you version a shared module?
-23. How would you migrate resources into a module?
-24. How do `moved` blocks help module refactoring?
-25. How would you design multi-region modules?
-26. How would you manage module breaking changes?
-27. How would you design module interfaces?
-28. When should a resource NOT become a module?
-29. How would you review a third-party module for security?
-30. Design an enterprise Terraform module ecosystem.
+21. Design a production VPC for a three-tier application.
+22. How would you make NAT highly available?
+23. When would you use VPC endpoints?
+24. How would you design network isolation between workloads?
+25. How would you manage multi-account VPC deployments?
+26. How would you connect VPCs?
+27. How would you design centralized egress?
+28. How would you integrate VPC provisioning with GitHub Actions?
+29. How would you minimize networking costs?
+30. Design an enterprise AWS network using Terraform modules.
 
 ---
 
-# ⚡ 54. Cheat Sheet
+# ⚡ 47. Cheat Sheet
 
-Local module:
+```text
+VPC
+10.0.0.0/16
 
-```hcl
-module "network" {
-  source = "./modules/network"
+PUBLIC
+10.0.1.0/24
+10.0.2.0/24
 
-  name = "dev"
-}
-```
+PRIVATE
+10.0.11.0/24
+10.0.12.0/24
 
-Git:
+DB
+10.0.21.0/24
+10.0.22.0/24
 
-```hcl
-module "network" {
-  source = "git::https://github.com/example/network.git?ref=v1.0.0"
-}
-```
+PUBLIC ROUTE
+0.0.0.0/0 → IGW
 
-Registry:
+PRIVATE ROUTE
+0.0.0.0/0 → NAT
 
-```hcl
-module "vpc" {
-  source  = "terraform-aws-modules/vpc/aws"
-  version = "~> 6.0"
-}
-```
-
-Input:
-
-```hcl
-name = var.name
-```
-
-Output:
-
-```hcl
-module.network.vpc_id
-```
-
-Count:
-
-```hcl
-count = 2
-```
-
-For each:
-
-```hcl
-for_each = var.environments
-```
-
-Provider:
-
-```hcl
-providers = {
-  aws = aws.dr
-}
-```
-
-Refactoring:
-
-```hcl
-moved {
-  from = aws_vpc.main
-  to   = module.network.aws_vpc.main
-}
-```
-
-Validation:
-
-```bash
+Terraform
+terraform init
 terraform fmt
 terraform validate
 terraform plan
+terraform apply
+terraform destroy
+
+Diagnostics
+terraform graph
+terraform state list
+terraform state show ADDRESS
 ```
 
 ---
 
-# 🏆 55. Mastery Checklist
-
-```text
-MODULE FUNDAMENTALS
-☑ Root module
-☑ Child module
-☑ Module structure
-☑ Inputs
-☑ Outputs
-☑ Locals
-
-SOURCES
-☑ Local
-☑ Git
-☑ Registry
-☑ Version pinning
-
-DESIGN
-☑ Module boundaries
-☑ Composition
-☑ Interface design
-☑ Validation
-☑ Optional attributes
-☑ Tags
-
-ADVANCED
-☑ count
-☑ for_each
-☑ Provider aliases
-☑ Nested modules
-☑ Dependencies
-☑ moved blocks
-
-OPERATIONS
-☑ Version upgrades
-☑ Documentation
-☑ Examples
-☑ Testing
-☑ Security review
-
-ENTERPRISE
-☑ Module repositories
-☑ Version lifecycle
-☑ Multi-region
-☑ Multi-account
-☑ CI/CD
-☑ Remote state
-```
-
----
-
-# 🗺️ 56. Terraform Roadmap
+# 🗺️ 48. Terraform Roadmap
 
 ```text
 01 Terraform Fundamentals       🟢
-        ↓
 02 Terraform Installation       🟢
-        ↓
 03 Terraform CLI & Workflow     🟢
-        ↓
 04 Providers & Authentication   🟢
-        ↓
 05 Variables & Outputs          🟢
-        ↓
 06 Resources & Data Sources     🟢
-        ↓
 07 Expressions & Functions      🟢
-        ↓
 08 Meta-Arguments               🟢
-        ↓
 09 State & State Management     🟢
-        ↓
 10 Remote State & Locking       🟢
-        ↓
-11 Terraform Modules            🟢 ← YOU ARE HERE
-        ↓
-12 AWS VPC Project
-        ↓
+11 Terraform Modules            🟢
+12 AWS VPC Project              🟢 ← YOU ARE HERE
 13 AWS EC2 Project
-        ↓
 14 AWS S3 Project
-        ↓
 15 IAM & Security
-        ↓
 16 HCP Terraform
-        ↓
 17 Terraform + GitHub Actions
-        ↓
 18 Terraform Security & Policy
-        ↓
 19 Multi-Cloud Terraform
-        ↓
 20 Enterprise Capstone
 ```
 
@@ -1994,7 +1572,7 @@ ENTERPRISE
 
 <div align="center">
 
-# 🧩 BUILD ONCE • REUSE EVERYWHERE
+# 🌐 BUILD THE NETWORK BEFORE YOU BUILD THE APPLICATION
 
 ### VishwaTech Labs
 
@@ -2002,6 +1580,6 @@ ENTERPRISE
 
 ### By Vishwanath Gowda H
 
-⭐ Infrastructure as Code • Reusable Modules • Enterprise Automation
+⭐ Infrastructure as Code • Cloud Networking • Automation
 
 </div>
